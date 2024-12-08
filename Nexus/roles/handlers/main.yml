@@ -1,0 +1,7 @@
+- name: Reload systemd
+    command: systemctl daemon-reload
+
+- name: Enable and start Nexus
+    systemd:
+      name: nexus
+      state: started

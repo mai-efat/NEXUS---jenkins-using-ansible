@@ -1,0 +1,18 @@
+[Unit]
+Description=Nexus Repository Manager
+After=network.target
+
+[Service]
+User=nexus
+Group=nexus
+ExecStart=/app/nexus/bin/nexus start
+ExecStop=/app/nexus/bin/nexus stop
+LimitNOFILE=65536
+TimeoutStartSec=300
+TimeoutStopSec=30
+SuccessExitStatus=143
+Type=simple
+PIDFile=/app/nexus/nexus.pid
+
+[Install]
+WantedBy=multi-user.target
