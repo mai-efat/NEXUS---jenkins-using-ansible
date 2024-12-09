@@ -1,8 +1,9 @@
 ---
-- name: Update system and install wget
+- name: install jenkins and Nexus Amazon linux 2023
   hosts: all
   become: yes  # Ensures sudo is used for privilege escalation
   roles:
+    - roles/jenkins
     - roles/Nexus
 
     

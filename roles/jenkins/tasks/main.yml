@@ -1,0 +1,51 @@
+
+    - name: Update all packages
+      dnf:
+        name: '*'
+        state: latest
+        update_cache: yes
+
+    # Step 2: Install Amazon Corretto 17 (Amazon Linux 2023)
+    - name: Install Amazon Corretto 17 (Amazon Linux 2023)
+      dnf:
+        name: java-17-amazon-corretto
+        state: present
+
+    # Step 3: Verify Java installation
+    - name: Verify Java installation
+      command: java -version
+      register: java_version
+      changed_when: false  # Don't mark this task as "changed"
+
+    - name: Display Java version
+      debug:
+        var: java_version.stdout
+
+
+    - name: Import Jenkins GPG key
+      ansible.builtin.rpm_key:
+        key: https://pkg.jenkins.io/redhat/jenkins.io-2023.key
+        state: present
+
+    # Step 4: Download Jenkins repo file
+    - name: Download Jenkins repo file
+      ansible.builtin.get_url:
+        url: https://pkg.jenkins.io/redhat-stable/jenkins.repo
+        dest: /etc/yum.repos.d/jenkins.repo
+      notify: Restart Jenkins service  # Notify handler if file is downloaded
+
+    # Step 5: Install Jenkins
+    - name: Install Jenkins
+      ansible.builtin.yum:
+        name: jenkins
+        state: present
+      notify: Restart Jenkins service  # Notify handler if Jenkins is installed
+
+    # Step 6: Start and enable Jenkins service
+    - name: Ensure Jenkins service is started and enabled
+      ansible.builtin.systemd:
+        name: jenkins
+        state: started
+        enabled: yes
+      notify: Restart Jenkins service  # Notify handler if Jenkins service needs restart
+
