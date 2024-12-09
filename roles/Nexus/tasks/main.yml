@@ -1,0 +1,123 @@
+
+    # Step 1: Update all packages
+    - name: Update all packages
+      dnf:
+        name: '*'
+        state: latest
+        update_cache: yes
+
+    # Step 2: Install wget (if necessary)
+    - name: Install wget package
+      dnf:
+        name: wget
+        state: present
+
+    # Step 3: Install Amazon Corretto 17 for Amazon Linux 2023
+    - name: Install Amazon Corretto 17 (Amazon Linux 2023)
+      dnf:
+        name: java-17-amazon-corretto
+        state: present
+
+    # Step 4: Verify Java installation
+    - name: Verify Java installation
+      command: java -version
+      register: java_version
+
+    - name: Display Java version
+      debug:
+        var: java_version.stdout
+
+    # Step 5: Create /app directory for Nexus installation
+    - name: Create /app directory
+      file:
+        path: /app
+        state: directory
+        mode: '0755'
+
+    # Step 6: List files in /app (debugging purpose)
+    - name: List files in /app
+      command: ls
+      args:
+        chdir: /app
+
+    - name: Download Nexus tarball
+      get_url:
+        url: "https://download.sonatype.com/nexus/3/latest-unix.tar.gz"  # Nexus tarball URL
+        dest: "/app/nexus.tar.gz"  # Destination path on remote server
+        mode: '0644'
+
+
+    # Step 7: Extract Nexus tarball to /app (ensure tarball is uploaded to the EC2)
+    - name: Extract Nexus tarball to /app
+      unarchive:
+        src: /app/nexus.tar.gz  # Path to the tar.gz file
+        dest: /app              # Destination directory for extraction
+        remote_src: yes         # The file is already on the remote machine
+        creates: /app/nexus-* 
+ 
+
+    - name: List files in /app after extraction (debugging)
+      command: ls -l /app
+      register: ls_output
+
+    - name: Display the files in /app
+      debug:
+        var: ls_output.stdout
+
+    # Step 8: Rename extracted directory to 'nexus'
+    - name: Rename extracted directory to 'nexus'
+      command: mv /app/nexus-3.75.1-01   /app/nexus
+
+    # Step 9: Add the 'nexus' user
+    - name: Add the 'nexus' user and group
+      user:
+        name: nexus
+        group: nexus
+        state: present
+        shell: /bin/bash
+        create_home: yes
+        comment: "Nexus User for Nexus Repository"
+
+    # Step 10: Change ownership of /app/nexus to nexus:nexus
+    - name: Change ownership of /app/nexus to nexus:nexus
+      file:
+        path: /app/nexus
+        owner: nexus
+        group: nexus
+        recurse: yes
+
+    # Step 11: Change ownership of /app/sonatype-work to nexus:nexus
+    - name: Change ownership of /app/sonatype-work to nexus:nexus
+      file:
+        path: /app/sonatype-work
+        owner: nexus
+        group: nexus
+        recurse: yes
+
+    # Step 12: Ensure run_as_user is set to 'nexus' in /app/nexus/bin/nexus.rc
+    - name: Ensure run_as_user is set to 'nexus' in /app/nexus/bin/nexus.rc
+      lineinfile:
+        path: /app/nexus/bin/nexus.rc
+        regexp: '^run_as_user='
+        line: 'run_as_user="nexus"'
+        create: yes
+
+    # Step 13: Copy Nexus systemd service file to /etc/systemd/system/
+    - name: Copy the nexus.service file to /etc/systemd/system/
+      copy:
+        src: files/nexus.service
+        dest: /etc/systemd/system/nexus.service
+        owner: nexus
+        group: nexus
+        mode: '0644'
+
+    # Step 14: Enable Nexus service to start on boot using systemd
+    - name: Enable nexus service to start on boot using systemd
+      systemd:
+        name: nexus
+        enabled: yes
+        state: started
+      notify:
+        - Reload systemd
+        - Enable and start Nexus
+

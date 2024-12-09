@@ -3,7 +3,7 @@
   hosts: all
   become: yes  # Ensures sudo is used for privilege escalation
   roles:
-    - Nexus
+    - roles/Nexus
 
     
    
